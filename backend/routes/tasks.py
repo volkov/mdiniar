@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from models import TaskCreate, TaskResponse, TaskUpdate
+from models import Comment, CommentCreate, TaskCreate, TaskResponse, TaskUpdate
 from services import task_service
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -55,3 +55,19 @@ def delete_task(task_id: str):
     if not task_service.delete_task(task_id):
         raise HTTPException(status_code=404, detail="Task not found")
     return {"detail": "Task deleted"}
+
+
+@router.get("/{task_id}/comments", response_model=list[Comment])
+def get_comments(task_id: str):
+    comments = task_service.get_comments(task_id)
+    if comments is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return comments
+
+
+@router.post("/{task_id}/comments", response_model=Comment, status_code=201)
+def add_comment(task_id: str, data: CommentCreate):
+    comment = task_service.add_comment(task_id, data)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return comment

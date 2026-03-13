@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Task } from '../types';
 import { PRIORITY_LABELS } from '../types';
 import { PriorityIcon } from './PriorityIcon';
@@ -8,10 +9,27 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
+  const [dragging, setDragging] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', task.id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setDragging(false);
+  };
+
   return (
     <button
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onClick={() => onClick(task)}
-      className="w-full text-left p-3 rounded-md bg-bg-secondary border border-border-primary hover:border-border-secondary transition-colors cursor-pointer"
+      className={`w-full text-left p-3 rounded-md bg-bg-secondary border border-border-primary hover:border-border-secondary transition-colors cursor-pointer ${
+        dragging ? 'opacity-50' : ''
+      }`}
     >
       <div className="flex items-start gap-2">
         <PriorityIcon priority={task.priority} />

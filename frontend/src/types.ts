@@ -31,6 +31,18 @@ export interface UpdateTaskInput {
   body?: string;
 }
 
+export interface Comment {
+  id: string;
+  author: string;
+  body: string;
+  created: string;
+}
+
+export interface CreateCommentInput {
+  author: string;
+  body: string;
+}
+
 export type ViewMode = 'board' | 'list';
 
 export const STATUS_ORDER: Status[] = ['backlog', 'todo', 'in_progress', 'done', 'cancelled'];

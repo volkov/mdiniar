@@ -5,7 +5,7 @@ from pathlib import Path
 import frontmatter
 
 from config import TASKS_DIR
-from models import Priority, Status, TaskCreate, TaskResponse, TaskUpdate
+from models import Comment, CommentCreate, Priority, Status, TaskCreate, TaskResponse, TaskUpdate
 
 PRIORITY_ORDER = {
     Priority.urgent: 0,
@@ -27,6 +27,8 @@ def _task_path(task_id: str) -> Path:
 def _parse_task(path: Path) -> TaskResponse:
     post = frontmatter.load(str(path))
     meta = post.metadata
+    raw_comments = meta.get("comments", [])
+    comments = [Comment(**c) for c in raw_comments] if raw_comments else []
     return TaskResponse(
         id=meta["id"],
         title=meta["title"],
@@ -37,6 +39,7 @@ def _parse_task(path: Path) -> TaskResponse:
         created=meta["created"],
         updated=meta["updated"],
         body=post.content,
+        comments=comments,
     )
 
 
@@ -52,6 +55,7 @@ def _write_task(task: TaskResponse) -> None:
         "labels": task.labels,
         "created": task.created.isoformat(),
         "updated": task.updated.isoformat(),
+        "comments": [c.model_dump(mode="json") for c in task.comments],
     }
     path = _task_path(task.id)
     path.write_text(frontmatter.dumps(post) + "\n")
@@ -151,3 +155,26 @@ def delete_task(task_id: str) -> bool:
         return False
     path.unlink()
     return True
+
+
+def get_comments(task_id: str) -> list[Comment] | None:
+    task = get_task(task_id)
+    if task is None:
+        return None
+    return task.comments
+
+
+def add_comment(task_id: str, data: CommentCreate) -> Comment | None:
+    task = get_task(task_id)
+    if task is None:
+        return None
+    comment = Comment(
+        id=uuid.uuid4().hex[:8],
+        author=data.author,
+        body=data.body,
+        created=datetime.now(timezone.utc),
+    )
+    task.comments.append(comment)
+    task.updated = datetime.now(timezone.utc)
+    _write_task(task)
+    return comment

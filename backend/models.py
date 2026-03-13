@@ -21,6 +21,18 @@ class Priority(str, Enum):
     none = "none"
 
 
+class Comment(BaseModel):
+    id: str
+    author: str
+    body: str
+    created: datetime
+
+
+class CommentCreate(BaseModel):
+    author: str
+    body: str
+
+
 class TaskResponse(BaseModel):
     id: str
     title: str
@@ -31,6 +43,7 @@ class TaskResponse(BaseModel):
     created: datetime
     updated: datetime
     body: str = ""
+    comments: list[Comment] = Field(default_factory=list)
 
 
 class TaskCreate(BaseModel):

@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import type { Task, Status, Priority, UpdateTaskInput } from '../types';
+import { useState, useEffect } from 'react';
+import type { Task, Status, Priority, UpdateTaskInput, Comment } from '../types';
 import { STATUS_ORDER, STATUS_LABELS, PRIORITY_ORDER, PRIORITY_LABELS } from '../types';
 import { StatusIcon } from './StatusIcon';
 import { PriorityIcon } from './PriorityIcon';
+import { fetchComments, createComment } from '../api/tasks';
 
 interface TaskDetailProps {
   task: Task;
@@ -15,11 +16,29 @@ export function TaskDetail({ task, onUpdate, onDelete, onClose }: TaskDetailProp
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [body, setBody] = useState(task.body);
-  const [status, setStatus] = useState<Status>(task.status);
-  const [priority, setPriority] = useState<Priority>(task.priority);
   const [assignee, setAssignee] = useState(task.assignee || '');
   const [labelsStr, setLabelsStr] = useState(task.labels.join(', '));
   const [saving, setSaving] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentAuthor, setCommentAuthor] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  useEffect(() => {
+    fetchComments(task.id).then(setComments).catch(() => {});
+  }, [task.id]);
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !commentAuthor.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const comment = await createComment(task.id, { author: commentAuthor.trim(), body: newComment.trim() });
+      setComments((prev) => [...prev, comment]);
+      setNewComment('');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -27,8 +46,6 @@ export function TaskDetail({ task, onUpdate, onDelete, onClose }: TaskDetailProp
       await onUpdate(task.id, {
         title,
         body,
-        status,
-        priority,
         assignee: assignee || null,
         labels: labelsStr.split(',').map((s) => s.trim()).filter(Boolean),
       });
@@ -38,12 +55,20 @@ export function TaskDetail({ task, onUpdate, onDelete, onClose }: TaskDetailProp
     }
   };
 
+  const handleStatusChange = async (newStatus: Status) => {
+    await onUpdate(task.id, { status: newStatus });
+  };
+
+  const handlePriorityChange = async (newPriority: Priority) => {
+    await onUpdate(task.id, { priority: newPriority });
+  };
+
   const handleDelete = async () => {
     await onDelete(task.id);
     onClose();
   };
 
-  const selectClass = 'bg-bg-tertiary border border-border-primary rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus:border-accent';
+  const selectClass = 'bg-bg-tertiary border border-border-primary rounded px-2 py-1 text-sm text-text-primary focus:outline-none focus:border-accent cursor-pointer';
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
@@ -112,32 +137,26 @@ export function TaskDetail({ task, onUpdate, onDelete, onClose }: TaskDetailProp
           {/* Properties */}
           <div className="grid grid-cols-[100px_1fr] gap-y-3 gap-x-4 text-sm">
             <span className="text-text-tertiary">Status</span>
-            {editing ? (
-              <select value={status} onChange={(e) => setStatus(e.target.value as Status)} className={selectClass}>
-                {STATUS_ORDER.map((s) => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                ))}
-              </select>
-            ) : (
-              <div className="flex items-center gap-2">
-                <StatusIcon status={task.status} />
-                <span className="text-text-primary">{STATUS_LABELS[task.status]}</span>
-              </div>
-            )}
+            <select
+              value={task.status}
+              onChange={(e) => handleStatusChange(e.target.value as Status)}
+              className={selectClass}
+            >
+              {STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
 
             <span className="text-text-tertiary">Priority</span>
-            {editing ? (
-              <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)} className={selectClass}>
-                {PRIORITY_ORDER.map((p) => (
-                  <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
-                ))}
-              </select>
-            ) : (
-              <div className="flex items-center gap-2">
-                <PriorityIcon priority={task.priority} />
-                <span className="text-text-primary">{PRIORITY_LABELS[task.priority]}</span>
-              </div>
-            )}
+            <select
+              value={task.priority}
+              onChange={(e) => handlePriorityChange(e.target.value as Priority)}
+              className={selectClass}
+            >
+              {PRIORITY_ORDER.map((p) => (
+                <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+              ))}
+            </select>
 
             <span className="text-text-tertiary">Assignee</span>
             {editing ? (
@@ -190,6 +209,52 @@ export function TaskDetail({ task, onUpdate, onDelete, onClose }: TaskDetailProp
                 {task.body || 'No description.'}
               </div>
             )}
+          </div>
+
+          {/* Comments */}
+          <div className="border-t border-border-primary pt-4">
+            <h3 className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-3">
+              Comments ({comments.length})
+            </h3>
+
+            {comments.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="bg-bg-tertiary rounded-md p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-text-primary">{comment.author}</span>
+                      <span className="text-xs text-text-tertiary">
+                        {new Date(comment.created).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-text-secondary whitespace-pre-wrap">{comment.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <input
+                value={commentAuthor}
+                onChange={(e) => setCommentAuthor(e.target.value)}
+                placeholder="Your name"
+                className="w-full bg-bg-tertiary border border-border-primary rounded px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent"
+              />
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Write a comment..."
+                rows={3}
+                className="w-full bg-bg-tertiary border border-border-primary rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent resize-y"
+              />
+              <button
+                onClick={handleAddComment}
+                disabled={submittingComment || !newComment.trim() || !commentAuthor.trim()}
+                className="px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                {submittingComment ? 'Posting...' : 'Add Comment'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

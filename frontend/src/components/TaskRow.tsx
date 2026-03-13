@@ -1,14 +1,17 @@
-import type { Task } from '../types';
-import { STATUS_LABELS, PRIORITY_LABELS } from '../types';
+import type { Task, Status, Priority, UpdateTaskInput } from '../types';
+import { STATUS_ORDER, STATUS_LABELS, PRIORITY_ORDER, PRIORITY_LABELS } from '../types';
 import { StatusIcon } from './StatusIcon';
 import { PriorityIcon } from './PriorityIcon';
 
 interface TaskRowProps {
   task: Task;
   onClick: (task: Task) => void;
+  onUpdateTask: (id: string, input: UpdateTaskInput) => Promise<Task>;
 }
 
-export function TaskRow({ task, onClick }: TaskRowProps) {
+export function TaskRow({ task, onClick, onUpdateTask }: TaskRowProps) {
+  const selectClass = 'bg-transparent text-xs text-text-secondary cursor-pointer focus:outline-none focus:text-text-primary';
+
   return (
     <tr
       onClick={() => onClick(task)}
@@ -26,8 +29,28 @@ export function TaskRow({ task, onClick }: TaskRowProps) {
           <span className="text-sm text-text-primary truncate max-w-md">{task.title}</span>
         </div>
       </td>
-      <td className="py-2 px-3 text-xs text-text-secondary">{STATUS_LABELS[task.status]}</td>
-      <td className="py-2 px-3 text-xs text-text-secondary">{PRIORITY_LABELS[task.priority]}</td>
+      <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
+        <select
+          value={task.status}
+          onChange={(e) => onUpdateTask(task.id, { status: e.target.value as Status })}
+          className={selectClass}
+        >
+          {STATUS_ORDER.map((s) => (
+            <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+          ))}
+        </select>
+      </td>
+      <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
+        <select
+          value={task.priority}
+          onChange={(e) => onUpdateTask(task.id, { priority: e.target.value as Priority })}
+          className={selectClass}
+        >
+          {PRIORITY_ORDER.map((p) => (
+            <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+          ))}
+        </select>
+      </td>
       <td className="py-2 px-3 text-xs text-text-secondary">{task.assignee || '--'}</td>
       <td className="py-2 px-3">
         <div className="flex gap-1 flex-wrap">

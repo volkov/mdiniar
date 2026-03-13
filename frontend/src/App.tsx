@@ -19,7 +19,7 @@ function App() {
 
   const handleUpdate = async (id: string, input: Parameters<typeof update>[1]) => {
     const updated = await update(id, input);
-    setSelectedTask(updated);
+    setSelectedTask((prev) => (prev?.id === id ? updated : prev));
     return updated;
   };
 
@@ -45,9 +45,9 @@ function App() {
           {error}
         </div>
       ) : view === 'board' ? (
-        <BoardView tasks={tasks} onTaskClick={handleTaskClick} />
+        <BoardView tasks={tasks} onTaskClick={handleTaskClick} onUpdateTask={handleUpdate} />
       ) : (
-        <ListView tasks={tasks} onTaskClick={handleTaskClick} />
+        <ListView tasks={tasks} onTaskClick={handleTaskClick} onUpdateTask={handleUpdate} />
       )}
 
       {/* Task Detail Panel */}

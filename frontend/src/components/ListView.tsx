@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import type { Task } from '../types';
+import type { Task, UpdateTaskInput } from '../types';
 import { TaskRow } from './TaskRow';
 
 interface ListViewProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
+  onUpdateTask: (id: string, input: UpdateTaskInput) => Promise<Task>;
 }
 
 type SortField = 'title' | 'status' | 'priority' | 'assignee' | 'created';
 
-export function ListView({ tasks, onTaskClick }: ListViewProps) {
+export function ListView({ tasks, onTaskClick, onUpdateTask }: ListViewProps) {
   const [sortField, setSortField] = useState<SortField>('created');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -60,7 +61,7 @@ export function ListView({ tasks, onTaskClick }: ListViewProps) {
         </thead>
         <tbody>
           {sorted.map((task) => (
-            <TaskRow key={task.id} task={task} onClick={onTaskClick} />
+            <TaskRow key={task.id} task={task} onClick={onTaskClick} onUpdateTask={onUpdateTask} />
           ))}
           {sorted.length === 0 && (
             <tr>
